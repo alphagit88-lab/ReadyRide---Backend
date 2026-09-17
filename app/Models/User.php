@@ -28,6 +28,8 @@ class User extends Authenticatable
         'role',
         'company_id',
         'fcm_token',
+        'start_date',
+        'payment_time',
     ];
 
     /**
@@ -51,5 +53,10 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(User::class, 'company_id');
     }
 }

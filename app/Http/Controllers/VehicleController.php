@@ -20,16 +20,16 @@ class VehicleController extends Controller
             'driver_id' => 'nullable|exists:users,id',
             'driver_payment_amount' => 'nullable|numeric'
         ]);
-        
+
         $validated['company_id'] = auth()->id();
         $vehicle = Vehicle::create($validated);
-        
+
         return response()->json($vehicle, 201);
     }
-    
+
     public function update(Request $request, Vehicle $vehicle)
     {
-        if ($vehicle->company_id !== auth()->id()) {
+        if ((int) $vehicle->company_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -39,7 +39,7 @@ class VehicleController extends Controller
             'driver_id' => 'nullable|exists:users,id',
             'driver_payment_amount' => 'nullable|numeric'
         ]);
-        
+
         $vehicle->update($validated);
         return response()->json($vehicle);
     }

@@ -8,8 +8,8 @@ use App\Http\Controllers\CompanyDriverController;
 use App\Http\Controllers\PaymentController;
 
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/auth/google', [AuthController::class, 'googleLogin']);
+// Route::post('/register', [AuthController::class, 'register']);
+// Route::post('/auth/google', [AuthController::class, 'googleLogin']);
 
 Route::middleware('auth.api_token')->group(function () {
     // User info

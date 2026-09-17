@@ -37,7 +37,74 @@ class PaymentController extends Controller
             return response()->json(['message' => 'Unauthorized role'], 403);
         }
 
-        return response()->json($query->orderBy('created_at', 'desc')->get());
+        $actualPayments = $query->get();
+        $allPayments = collect($actualPayments);
+
+        if ($user->role === 'company') {
+            $vehiclesQuery = Vehicle::where('company_id', $user->id)->whereNotNull('driver_id');
+            if ($request->filled('vehicle_id')) {
+                $vehiclesQuery->where('id', $request->vehicle_id);
+            }
+            $vehicles = $vehiclesQuery->get();
+            
+            $driverIds = $vehicles->pluck('driver_id')->toArray();
+            if ($request->filled('driver_id')) {
+                $driverIds = array_intersect($driverIds, [$request->driver_id]);
+            }
+            
+            $drivers = User::whereIn('id', $driverIds)->whereNotNull('start_date')->get();
+            
+            $now = \Carbon\Carbon::now();
+            $todayDate = $now->toDateString();
+            $currentTime = $now->format('H:i:s');
+            
+            foreach ($drivers as $driver) {
+                $vehicle = $vehicles->where('driver_id', $driver->id)->first();
+                if (!$vehicle) continue;
+
+                $startDate = \Carbon\Carbon::parse($driver->start_date);
+                if ($startDate->isFuture()) continue;
+                
+                for ($date = $startDate->copy(); $date->lte($now); $date->addDay()) {
+                    $dateString = $date->toDateString();
+                    
+                    if ($dateString === $todayDate) {
+                        if (!$driver->payment_time || $currentTime < $driver->payment_time) {
+                            continue;
+                        }
+                    }
+
+                    $hasPayment = $allPayments->where('driver_id', $driver->id)
+                                              ->where('vehicle_id', $vehicle->id)
+                                              ->where('payment_date', $dateString)
+                                              ->isNotEmpty();
+
+                    if (!$hasPayment) {
+                        $allPayments->push((object)[
+                            'id' => 'past_due_' . $driver->id . '_' . $dateString,
+                            'vehicle_id' => $vehicle->id,
+                            'driver_id' => $driver->id,
+                            'company_id' => $user->id,
+                            'payment_date' => $dateString,
+                            'amount' => $vehicle->driver_payment_amount,
+                            'status' => 'past_due',
+                            'created_at' => $date->toDateTimeString(),
+                            'vehicle' => $vehicle,
+                            'driver' => $driver,
+                            'company' => $user,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $sortedPayments = $allPayments->sortByDesc(function ($payment) {
+            return is_array($payment) 
+                ? $payment['payment_date'] . '_' . $payment['created_at']
+                : $payment->payment_date . '_' . $payment->created_at;
+        })->values();
+
+        return response()->json($sortedPayments);
     }
 
     public function store(Request $request)

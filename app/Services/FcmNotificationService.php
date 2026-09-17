@@ -14,8 +14,8 @@ class FcmNotificationService
 
     public function __construct()
     {
-        $this->projectId = config('services.firebase.project_id');
-        $this->serviceAccountPath = base_path(config('services.firebase.service_account'));
+        $this->projectId = config('services.firebase.project_id') ?? '';
+        $this->serviceAccountPath = base_path(config('services.firebase.service_account') ?? '');
     }
 
     /**
