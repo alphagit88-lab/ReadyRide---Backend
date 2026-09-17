@@ -81,7 +81,15 @@ class CompanyDriverController extends Controller
             ->where('company_id', $companyId)
             ->findOrFail($id);
 
-        $driver->delete();
+        if (\App\Models\Vehicle::where('driver_id', $driver->id)->exists()) {
+            return response()->json(['message' => 'Cannot delete driver because they are assigned to a vehicle. Unassign them first.'], 409);
+        }
+
+        try {
+            $driver->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json(['message' => 'Cannot delete this driver due to existing related records (e.g. payments).'], 409);
+        }
 
         return response()->json(['message' => 'Driver deleted successfully']);
     }
