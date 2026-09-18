@@ -12,11 +12,12 @@ class CompanyDriverController extends Controller
     {
         // Assuming middleware authenticates and sets the user
         $companyId = $request->user()->id;
-        
+
         $drivers = User::where('role', 'driver')
             ->where('company_id', $companyId)
+            ->with('documents')
             ->get();
-            
+
         return response()->json($drivers);
     }
 
@@ -25,20 +26,20 @@ class CompanyDriverController extends Controller
         $companyId = $request->user()->id;
 
         $request->validate([
-            'name'         => 'required|string|max:255',
-            'email'        => 'required|string|email|max:255|unique:users',
-            'password'     => 'required|string|min:6',
-            'start_date'   => 'nullable|date',
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:6',
+            'start_date' => 'nullable|date',
             'payment_time' => 'nullable|date_format:H:i',
         ]);
 
         $driver = User::create([
-            'name'         => $request->name,
-            'email'        => $request->email,
-            'password'     => Hash::make($request->password),
-            'role'         => 'driver',
-            'company_id'   => $companyId,
-            'start_date'   => $request->start_date,
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'driver',
+            'company_id' => $companyId,
+            'start_date' => $request->start_date,
             'payment_time' => $request->payment_time,
         ]);
 
@@ -54,19 +55,23 @@ class CompanyDriverController extends Controller
             ->findOrFail($id);
 
         $request->validate([
-            'name'         => 'string|max:255',
-            'email'        => 'string|email|max:255|unique:users,email,'.$driver->id,
-            'password'     => 'nullable|string|min:6',
-            'start_date'   => 'nullable|date',
+            'name' => 'string|max:255',
+            'email' => 'string|email|max:255|unique:users,email,' . $driver->id,
+            'password' => 'nullable|string|min:6',
+            'start_date' => 'nullable|date',
             'payment_time' => 'nullable|date_format:H:i',
         ]);
 
-        if ($request->has('name'))         $driver->name         = $request->name;
-        if ($request->has('email'))        $driver->email        = $request->email;
+        if ($request->has('name'))
+            $driver->name = $request->name;
+        if ($request->has('email'))
+            $driver->email = $request->email;
         if ($request->has('password') && $request->password)
             $driver->password = Hash::make($request->password);
-        if ($request->has('start_date'))   $driver->start_date   = $request->start_date;
-        if ($request->has('payment_time')) $driver->payment_time = $request->payment_time;
+        if ($request->has('start_date'))
+            $driver->start_date = $request->start_date;
+        if ($request->has('payment_time'))
+            $driver->payment_time = $request->payment_time;
 
         $driver->save();
 

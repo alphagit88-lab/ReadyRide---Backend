@@ -39,6 +39,8 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'start_date' => $user->start_date,
+                'payment_time' => $user->payment_time,
             ],
         ]);
     }
@@ -81,6 +83,8 @@ class AuthController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
+                'start_date' => $user->start_date,
+                'payment_time' => $user->payment_time,
                 'vehicle' => $vehicle ? ['id' => $vehicle->id, 'name' => $vehicle->name, 'license_plate' => $vehicle->license_plate, 'driver_payment_amount' => $vehicle->driver_payment_amount] : null,
             ],
         ]);
@@ -169,6 +173,8 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'avatar' => $user->avatar,
                 'role' => $user->role,
+                'start_date' => $user->start_date,
+                'payment_time' => $user->payment_time,
             ],
         ]);
     }

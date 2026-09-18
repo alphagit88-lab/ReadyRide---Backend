@@ -59,4 +59,9 @@ class User extends Authenticatable
     {
         return $this->belongsTo(User::class, 'company_id');
     }
+
+    public function documents()
+    {
+        return $this->hasMany(DriverDocument::class, 'driver_id');
+    }
 }
