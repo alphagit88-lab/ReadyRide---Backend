@@ -13,7 +13,7 @@ class PaymentController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        
+
         $query = Payment::with(['vehicle', 'driver', 'company']);
 
         if ($user->role === 'driver') {
@@ -46,28 +46,30 @@ class PaymentController extends Controller
                 $vehiclesQuery->where('id', $request->vehicle_id);
             }
             $vehicles = $vehiclesQuery->get();
-            
+
             $driverIds = $vehicles->pluck('driver_id')->toArray();
             if ($request->filled('driver_id')) {
                 $driverIds = array_intersect($driverIds, [$request->driver_id]);
             }
-            
+
             $drivers = User::whereIn('id', $driverIds)->whereNotNull('start_date')->get();
-            
+
             $now = \Carbon\Carbon::now();
             $todayDate = $now->toDateString();
             $currentTime = $now->format('H:i:s');
-            
+
             foreach ($drivers as $driver) {
                 $vehicle = $vehicles->where('driver_id', $driver->id)->first();
-                if (!$vehicle) continue;
+                if (!$vehicle)
+                    continue;
 
                 $startDate = \Carbon\Carbon::parse($driver->start_date);
-                if ($startDate->isFuture()) continue;
-                
+                if ($startDate->isFuture())
+                    continue;
+
                 for ($date = $startDate->copy(); $date->lte($now); $date->addDay()) {
                     $dateString = $date->toDateString();
-                    
+
                     if ($dateString === $todayDate) {
                         if (!$driver->payment_time || $currentTime < $driver->payment_time) {
                             continue;
@@ -75,12 +77,12 @@ class PaymentController extends Controller
                     }
 
                     $hasPayment = $allPayments->where('driver_id', $driver->id)
-                                              ->where('vehicle_id', $vehicle->id)
-                                              ->where('payment_date', $dateString)
-                                              ->isNotEmpty();
+                        ->where('vehicle_id', $vehicle->id)
+                        ->where('payment_date', $dateString)
+                        ->isNotEmpty();
 
                     if (!$hasPayment) {
-                        $allPayments->push((object)[
+                        $allPayments->push((object) [
                             'id' => 'past_due_' . $driver->id . '_' . $dateString,
                             'vehicle_id' => $vehicle->id,
                             'driver_id' => $driver->id,
@@ -99,7 +101,7 @@ class PaymentController extends Controller
         }
 
         $sortedPayments = $allPayments->sortByDesc(function ($payment) {
-            return is_array($payment) 
+            return is_array($payment)
                 ? $payment['payment_date'] . '_' . $payment['created_at']
                 : $payment->payment_date . '_' . $payment->created_at;
         })->values();
@@ -117,8 +119,8 @@ class PaymentController extends Controller
 
         $request->validate([
             'payment_date' => 'required|date',
-            'amount'       => 'required|numeric',
-            'slip'         => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'amount' => 'required|numeric',
+            'slip' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         $vehicle = Vehicle::where('driver_id', $user->id)->first();
@@ -132,13 +134,13 @@ class PaymentController extends Controller
         }
 
         $payment = Payment::create([
-            'vehicle_id'   => $vehicle->id,
-            'driver_id'    => $user->id,
-            'company_id'   => $user->company_id,
+            'vehicle_id' => $vehicle->id,
+            'driver_id' => $user->id,
+            'company_id' => $user->company_id,
             'payment_date' => $request->payment_date,
-            'amount'       => $request->amount,
-            'slip_path'    => $slipPath,
-            'status'       => 'pending',
+            'amount' => $request->amount,
+            'slip_path' => $slipPath,
+            'status' => 'pending',
         ]);
 
         // Send FCM notification to company
@@ -151,7 +153,7 @@ class PaymentController extends Controller
                     'New Payment Submitted',
                     "{$user->name} submitted a payment of \${$request->amount} for {$vehicle->license_plate}",
                     [
-                        'type'       => 'payment_submitted',
+                        'type' => 'payment_submitted',
                         'payment_id' => (string) $payment->id,
                         'vehicle_id' => (string) $vehicle->id,
                     ]
@@ -171,7 +173,7 @@ class PaymentController extends Controller
         }
 
         $payment = Payment::where('company_id', $user->id)->with('driver')->findOrFail($id);
-        
+
         $payment->status = 'approved';
         $payment->save();
 
@@ -183,7 +185,7 @@ class PaymentController extends Controller
                 'Payment Approved ✓',
                 "Your payment of \${$payment->amount} for {$payment->payment_date} has been approved!",
                 [
-                    'type'       => 'payment_approved',
+                    'type' => 'payment_approved',
                     'payment_id' => (string) $payment->id,
                 ]
             );
@@ -204,20 +206,20 @@ class PaymentController extends Controller
         if (!$vehicle) {
             return response()->json(['is_assigned' => false]);
         }
-        
-        $today = date('Y-m-d');
-        
+
+        $date = $request->query('date', date('Y-m-d'));
+
         $payment = Payment::where('driver_id', $user->id)
             ->where('vehicle_id', $vehicle->id)
-            ->whereDate('payment_date', $today)
+            ->whereDate('payment_date', $date)
             ->first();
-            
+
         return response()->json([
-            'is_assigned'  => true,
-            'vehicle'      => $vehicle,
+            'is_assigned' => true,
+            'vehicle' => $vehicle,
             'has_paid_today' => $payment ? true : false,
-            'payment'      => $payment,
-            'amount_due'   => $vehicle->driver_payment_amount,
+            'payment' => $payment,
+            'amount_due' => $vehicle->driver_payment_amount,
         ]);
     }
 }
