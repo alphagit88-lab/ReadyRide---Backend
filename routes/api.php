@@ -51,6 +51,6 @@ Route::middleware('auth.api_token')->group(function () {
     Route::get('/payments/today-status', [PaymentController::class, 'todayStatus']);
     Route::get('/payments', [PaymentController::class, 'index']);
     Route::post('/payments', [PaymentController::class, 'store']);
+    Route::post('/payments/toggle-status', [PaymentController::class, 'toggleStatus']);
     Route::put('/payments/{id}/approve', [PaymentController::class, 'approve']);
 });
-

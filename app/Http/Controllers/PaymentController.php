@@ -133,15 +133,19 @@ class PaymentController extends Controller
             $slipPath = $request->file('slip')->store('slips', 'public');
         }
 
-        $payment = Payment::create([
+        $payment = Payment::firstOrNew([
             'vehicle_id' => $vehicle->id,
             'driver_id' => $user->id,
-            'company_id' => $user->company_id,
             'payment_date' => $request->payment_date,
-            'amount' => $request->amount,
-            'slip_path' => $slipPath,
-            'status' => 'pending',
         ]);
+
+        $payment->company_id = $user->company_id;
+        $payment->amount = $request->amount;
+        if ($slipPath) {
+            $payment->slip_path = $slipPath;
+        }
+        $payment->status = 'pending';
+        $payment->save();
 
         // Send FCM notification to company
         if ($user->company_id) {
@@ -221,5 +225,55 @@ class PaymentController extends Controller
             'payment' => $payment,
             'amount_due' => $vehicle->driver_payment_amount,
         ]);
+    }
+
+    public function toggleStatus(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'company') {
+            return response()->json(['message' => 'Only companies can toggle payment statuses.'], 403);
+        }
+
+        $request->validate([
+            'payment_id' => 'nullable|int',
+            'driver_id' => 'required|exists:users,id',
+            'payment_date' => 'required|date',
+            'status' => 'required|in:approved,past_due',
+        ]);
+
+        $vehicle = Vehicle::where('driver_id', $request->driver_id)
+            ->where('company_id', $user->id)
+            ->first();
+
+        if (!$vehicle) {
+            return response()->json(['message' => 'Vehicle not found or unauthorized.'], 403);
+        }
+
+        // If a real DB payment ID is provided (not a generated past_due string)
+        if ($request->filled('payment_id') && strpos($request->payment_id, 'past_due_') === false) {
+            $payment = Payment::where('company_id', $user->id)
+                ->where('id', $request->payment_id)
+                ->first();
+
+            if ($payment) {
+                $payment->status = $request->status;
+                $payment->save();
+            } else {
+                return response()->json(['message' => 'Payment not found.'], 404);
+            }
+        } else {
+            // Create a new record (e.g., marking a fake past_due card as Paid)
+            $payment = Payment::create([
+                'vehicle_id' => $vehicle->id,
+                'driver_id' => $request->driver_id,
+                'company_id' => $user->id,
+                'payment_date' => $request->payment_date,
+                'amount' => $vehicle->driver_payment_amount,
+                'status' => $request->status,
+            ]);
+        }
+
+        return response()->json($payment->load(['vehicle', 'driver', 'company']));
     }
 }
