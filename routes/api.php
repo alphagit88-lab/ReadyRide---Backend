@@ -13,6 +13,12 @@ Route::post('/login', [AuthController::class, 'login']);
 // Route::post('/register', [AuthController::class, 'register']);
 // Route::post('/auth/google', [AuthController::class, 'googleLogin']);
 
+// Public: version check (no auth required)
+Route::get('/version/android', function () {
+    $version = \App\Models\Setting::where('key', 'android_app_version')->value('value');
+    return response()->json(['version' => $version]);
+});
+
 Route::middleware('auth.api_token')->group(function () {
     // User info
     Route::get('/user', function (Request $request) {

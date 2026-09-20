@@ -11,7 +11,8 @@ class AdminSettingsController extends Controller
     public function index()
     {
         $conditions = Setting::where('key', 'conditions')->value('value') ?? '';
-        return view('admin.settings', compact('conditions'));
+        $android_app_version = Setting::where('key', 'android_app_version')->value('value') ?? '';
+        return view('admin.settings', compact('conditions', 'android_app_version'));
     }
 
     public function update(Request $request)

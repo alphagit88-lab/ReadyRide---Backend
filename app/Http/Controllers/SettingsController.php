@@ -14,7 +14,8 @@ class SettingsController extends Controller
     public function index(Request $request)
     {
         $defaults = [
-            'conditions' => '',
+            'conditions'          => '',
+            'android_app_version' => '',
         ];
 
         $rows = Setting::pluck('value', 'key')->toArray();
