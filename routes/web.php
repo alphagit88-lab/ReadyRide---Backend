@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AdminAuthController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\AdminSettingsController;
 
 Route::get('/', function () { return response()->json(['message' => 'API is running']); });
 
@@ -24,5 +25,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('users/companies-json', [UserManagementController::class, 'companiesJson'])->name('users.companies-json');
         Route::resource('users', UserManagementController::class)->except(['show']);
+
+        Route::get('settings',  [AdminSettingsController::class, 'index'])->name('settings.index');
+        Route::put('settings',  [AdminSettingsController::class, 'update'])->name('settings.update');
     });
 });

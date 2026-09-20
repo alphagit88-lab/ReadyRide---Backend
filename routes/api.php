@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CompanyDriverController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\DriverDocumentController;
+use App\Http\Controllers\SettingsController;
 
 Route::post('/login', [AuthController::class, 'login']);
 // Route::post('/register', [AuthController::class, 'register']);
@@ -53,4 +54,8 @@ Route::middleware('auth.api_token')->group(function () {
     Route::post('/payments', [PaymentController::class, 'store']);
     Route::post('/payments/toggle-status', [PaymentController::class, 'toggleStatus']);
     Route::put('/payments/{id}/approve', [PaymentController::class, 'approve']);
+
+    // Settings (company_settings table)
+    Route::get('/settings', [SettingsController::class, 'index']);
+    Route::put('/settings', [SettingsController::class, 'update']);
 });

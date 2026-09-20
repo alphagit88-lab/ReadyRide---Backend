@@ -29,11 +29,24 @@ class DriverDocumentController extends Controller
         foreach ($request->file('documents') as $index => $doc) {
             $type = $request->input("documents.{$index}.type");
             $path = $doc['file']->store("driver_docs/{$driver->id}", 'public');
-            \App\Models\DriverDocument::create([
-                'driver_id'     => $driver->id,
-                'document_type' => $type,
-                'file_path'     => $path,
-            ]);
+
+            $existingDoc = \App\Models\DriverDocument::where('driver_id', $driver->id)
+                ->where('document_type', $type)
+                ->first();
+
+            if ($existingDoc) {
+                if (Storage::disk('public')->exists($existingDoc->file_path)) {
+                    Storage::disk('public')->delete($existingDoc->file_path);
+                }
+                $existingDoc->update(['file_path' => $path]);
+            } else {
+                \App\Models\DriverDocument::create([
+                    'driver_id' => $driver->id,
+                    'document_type' => $type,
+                    'file_path' => $path,
+                ]);
+            }
+
             $saved[] = ['type' => $type, 'path' => $path];
         }
 

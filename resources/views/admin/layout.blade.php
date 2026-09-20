@@ -222,6 +222,10 @@
       <a href="{{ route('admin.users.index') }}" class="nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
         <span class="nav-icon">👥</span> Users
       </a>
+      <div class="nav-label" style="margin-top:8px;">Configuration</div>
+      <a href="{{ route('admin.settings.index') }}" class="nav-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
+        <span class="nav-icon">⚙️</span> Settings
+      </a>
     </nav>
 
     <div class="sidebar-footer">
