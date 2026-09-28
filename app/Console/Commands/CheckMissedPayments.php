@@ -11,19 +11,20 @@ use Illuminate\Support\Facades\Log;
 
 class CheckMissedPayments extends Command
 {
-    protected $signature   = 'app:check-missed-payments';
+    protected $signature = 'app:check-missed-payments';
     protected $description = 'Notify drivers and companies if a payment has not been submitted by the due time';
 
     public function handle(): void
     {
         $now = Carbon::now();
-        $todayStr   = $now->toDateString();       // e.g. 2026-09-17
-        $currentHM  = $now->format('H:i');        // e.g. 14:30
+        $todayStr = $now->toDateString();           // e.g. 2026-09-17
+        $oneHourAgo = $now->copy()->subHour()->format('H:i:s');  // 1 hour ago
+        $currentHMS = $now->format('H:i:s');                      // current time
 
-        // Fetch all drivers who have a payment_time set matching right now (HH:MM)
+        // Fetch drivers whose payment_time is within the past 1 hour (or right now)
         $dueDrivers = User::where('role', 'driver')
             ->whereNotNull('payment_time')
-            ->whereRaw("TIME_FORMAT(payment_time, '%H:%i') = ?", [$currentHM])
+            ->whereRaw("TIME_FORMAT(payment_time, '%H:%i:%s') BETWEEN ? AND ?", [$oneHourAgo, $currentHMS])
             ->get();
 
         if ($dueDrivers->isEmpty()) {
@@ -35,7 +36,7 @@ class CheckMissedPayments extends Command
         foreach ($dueDrivers as $driver) {
             // Check if driver already submitted a payment today
             $paid = \DB::table('payments')
-                ->where('user_id', $driver->id)
+                ->where('driver_id', $driver->id)
                 ->where('payment_date', $todayStr)
                 ->exists();
 
@@ -43,28 +44,64 @@ class CheckMissedPayments extends Command
                 continue;
             }
 
+            // Check if driver was already notified today (avoid duplicate notifications)
+            $alreadyNotified = \DB::table('notifications')
+                ->where('user_id', $driver->id)
+                ->where('type', 'missed_payment')
+                ->whereDate('created_at', $todayStr)
+                ->exists();
+
+            if ($alreadyNotified) {
+                continue;
+            }
+
+            $now = now();
+
             // Notify driver
-            $fcm->sendToUser(
-                $driver,
-                '⚠️ Payment Due',
-                "You haven't submitted today's payment yet. Please do it now.",
-                ['type' => 'missed_payment']
-            );
+            $driverTitle = 'Payment Due';
+            $driverBody = "You haven't submitted today's payment yet. Please do it now.";
+            $driverSent = $fcm->sendToUser($driver, $driverTitle, $driverBody, ['type' => 'missed_payment']);
+
+            if ($driverSent) {
+                \DB::table('notifications')->insert([
+                    'user_id' => $driver->id,
+                    'type' => 'missed_payment',
+                    'title' => $driverTitle,
+                    'body' => $driverBody,
+                    'data' => json_encode(['type' => 'missed_payment']),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            }
 
             // Notify their company
             if ($driver->company_id) {
                 $company = User::find($driver->company_id);
                 if ($company) {
-                    $fcm->sendToUser(
+                    $companyTitle = 'Driver Payment Missed';
+                    $companyBody = "{$driver->name} has not submitted today's payment.";
+                    $companySent = $fcm->sendToUser(
                         $company,
-                        '⚠️ Driver Payment Missed',
-                        "{$driver->name} has not submitted today's payment.",
+                        $companyTitle,
+                        $companyBody,
                         ['type' => 'missed_payment', 'driver_id' => (string) $driver->id]
                     );
+
+                    if ($companySent) {
+                        \DB::table('notifications')->insert([
+                            'user_id' => $company->id,
+                            'type' => 'missed_payment',
+                            'title' => $companyTitle,
+                            'body' => $companyBody,
+                            'data' => json_encode(['type' => 'missed_payment', 'driver_id' => (string) $driver->id]),
+                            'created_at' => $now,
+                            'updated_at' => $now,
+                        ]);
+                    }
                 }
             }
 
-            Log::info("CheckMissedPayments: Notified driver #{$driver->id} ({$driver->name}) and company.");
+            Log::info("CheckMissedPayments: Was run for driver #{$driver->id} ({$driver->name}) and company.");
         }
     }
 }

@@ -17,10 +17,10 @@ class PaymentController extends Controller
         $query = Payment::with(['vehicle', 'driver', 'company']);
 
         if ($user->role === 'driver') {
-            // Driver sees all payments for their assigned vehicle (own + others)
+            // Driver sees all payments for their assigned vehicle (own)
             $vehicle = Vehicle::where('driver_id', $user->id)->first();
             if ($vehicle) {
-                $query->where('vehicle_id', $vehicle->id);
+                $query->where('vehicle_id', $vehicle->id)->where('driver_id', $user->id);
             } else {
                 return response()->json([]);
             }
