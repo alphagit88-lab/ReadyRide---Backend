@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Models\Payment;
+use App\Models\Notification;
 use App\Services\FcmNotificationService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -35,8 +36,7 @@ class CheckMissedPayments extends Command
 
         foreach ($dueDrivers as $driver) {
             // Check if driver already submitted a payment today
-            $paid = \DB::table('payments')
-                ->where('driver_id', $driver->id)
+            $paid = Payment::where('driver_id', $driver->id)
                 ->where('payment_date', $todayStr)
                 ->exists();
 
@@ -45,8 +45,7 @@ class CheckMissedPayments extends Command
             }
 
             // Check if driver was already notified today (avoid duplicate notifications)
-            $alreadyNotified = \DB::table('notifications')
-                ->where('user_id', $driver->id)
+            $alreadyNotified = Notification::where('user_id', $driver->id)
                 ->where('type', 'missed_payment')
                 ->whereDate('created_at', $todayStr)
                 ->exists();
@@ -63,14 +62,12 @@ class CheckMissedPayments extends Command
             $driverSent = $fcm->sendToUser($driver, $driverTitle, $driverBody, ['type' => 'missed_payment']);
 
             if ($driverSent) {
-                \DB::table('notifications')->insert([
+                Notification::create([
                     'user_id' => $driver->id,
-                    'type' => 'missed_payment',
-                    'title' => $driverTitle,
-                    'body' => $driverBody,
-                    'data' => json_encode(['type' => 'missed_payment']),
-                    'created_at' => $now,
-                    'updated_at' => $now,
+                    'type'    => 'missed_payment',
+                    'title'   => $driverTitle,
+                    'body'    => $driverBody,
+                    'data'    => ['type' => 'missed_payment'],
                 ]);
             }
 
@@ -88,14 +85,12 @@ class CheckMissedPayments extends Command
                     );
 
                     if ($companySent) {
-                        \DB::table('notifications')->insert([
+                        Notification::create([
                             'user_id' => $company->id,
-                            'type' => 'missed_payment',
-                            'title' => $companyTitle,
-                            'body' => $companyBody,
-                            'data' => json_encode(['type' => 'missed_payment', 'driver_id' => (string) $driver->id]),
-                            'created_at' => $now,
-                            'updated_at' => $now,
+                            'type'    => 'missed_payment',
+                            'title'   => $companyTitle,
+                            'body'    => $companyBody,
+                            'data'    => ['type' => 'missed_payment', 'driver_id' => (string) $driver->id],
                         ]);
                     }
                 }
