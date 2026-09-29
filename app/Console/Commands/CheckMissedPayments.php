@@ -27,6 +27,7 @@ class CheckMissedPayments extends Command
             ->whereNotNull('payment_time')
             ->whereRaw("TIME_FORMAT(payment_time, '%H:%i:%s') BETWEEN ? AND ?", [$oneHourAgo, $currentHMS])
             ->whereHas('assignedVehicle')
+            ->with('assignedVehicle')
             ->get();
 
         if ($dueDrivers->isEmpty()) {
@@ -65,10 +66,10 @@ class CheckMissedPayments extends Command
             if ($driverSent) {
                 Notification::create([
                     'user_id' => $driver->id,
-                    'type'    => 'missed_payment',
-                    'title'   => $driverTitle,
-                    'body'    => $driverBody,
-                    'data'    => ['type' => 'missed_payment'],
+                    'type' => 'missed_payment',
+                    'title' => $driverTitle,
+                    'body' => $driverBody,
+                    'data' => ['type' => 'missed_payment'],
                 ]);
             }
 
@@ -77,7 +78,9 @@ class CheckMissedPayments extends Command
                 $company = User::find($driver->company_id);
                 if ($company) {
                     $companyTitle = 'Driver Payment Missed';
-                    $companyBody = "{$driver->name} has not submitted today's payment.";
+                    $plate = $driver->assignedVehicle->license_plate ?? 'the vehicle';
+                    $formattedDate = $now->format('Y/m/d');
+                    $companyBody = "{$driver->name} has not submitted today's payment for {$plate} on {$formattedDate}.";
                     $companySent = $fcm->sendToUser(
                         $company,
                         $companyTitle,
@@ -88,16 +91,16 @@ class CheckMissedPayments extends Command
                     if ($companySent) {
                         Notification::create([
                             'user_id' => $company->id,
-                            'type'    => 'missed_payment',
-                            'title'   => $companyTitle,
-                            'body'    => $companyBody,
-                            'data'    => ['type' => 'missed_payment', 'driver_id' => (string) $driver->id],
+                            'type' => 'missed_payment',
+                            'title' => $companyTitle,
+                            'body' => $companyBody,
+                            'data' => ['type' => 'missed_payment', 'driver_id' => (string) $driver->id],
                         ]);
                     }
                 }
             }
 
-            Log::info("CheckMissedPayments: Was run for driver #{$driver->id} ({$driver->name}) and company.");
+            Log::info("CheckMissedPayments: Was run for driver #{$driver->id} ({$driver->name}) and company id {$driver->company_id}.");
         }
     }
 }
