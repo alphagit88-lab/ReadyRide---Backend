@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('body');
             $table->json('data')->nullable();               // extra payload
+            $table->boolean('is_read')->default(false);
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

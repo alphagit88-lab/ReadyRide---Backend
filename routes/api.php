@@ -8,6 +8,7 @@ use App\Http\Controllers\CompanyDriverController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\DriverDocumentController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\NotificationController;
 
 Route::post('/login', [AuthController::class, 'login']);
 // Route::post('/register', [AuthController::class, 'register']);
@@ -64,4 +65,10 @@ Route::middleware('auth.api_token')->group(function () {
     // Settings (company_settings table)
     Route::get('/settings', [SettingsController::class, 'index']);
     Route::put('/settings', [SettingsController::class, 'update']);
+
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::post('/notifications/mark-as-read', [NotificationController::class, 'markAsRead']);
+    Route::post('/notifications/{id}/mark-as-read', [NotificationController::class, 'markOneAsRead']);
 });
