@@ -26,6 +26,7 @@ class CheckMissedPayments extends Command
         $dueDrivers = User::where('role', 'driver')
             ->whereNotNull('payment_time')
             ->whereRaw("TIME_FORMAT(payment_time, '%H:%i:%s') BETWEEN ? AND ?", [$oneHourAgo, $currentHMS])
+            ->whereHas('assignedVehicle')
             ->get();
 
         if ($dueDrivers->isEmpty()) {

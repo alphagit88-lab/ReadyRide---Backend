@@ -64,4 +64,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(DriverDocument::class, 'driver_id');
     }
+
+    public function assignedVehicle()
+    {
+        return $this->hasOne(Vehicle::class, 'driver_id');
+    }
 }
